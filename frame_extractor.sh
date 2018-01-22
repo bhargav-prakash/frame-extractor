@@ -72,7 +72,7 @@ ffmpeg -i $file -ss $offset -t $duration frame_extractor_frames/frame%06d.jpg 2>
 error_code=$?
 check_error $error_code
 
-ffprobe $file -show_frames -select_streams v -show_entries frame=pkt_pts_time,pict_type|egrep "(pict_type|pkt_pts_time)"|cut -d'=' -f'2'>frame_extractor_data 2>&1
+ffprobe $file -show_frames -select_streams v -show_entries frame=pkt_pts_time,pkt_pts,pict_type|egrep "(pict_type|pkt_pts_time|pkt_pts)"|cut -d'=' -f'2'>frame_extractor_data 2>&1
 error_code=$?
 check_error $error_code
 
@@ -94,9 +94,15 @@ end=$((($t+$duration)*$fps))
 for((i=$start;i<=$end;i++))
 do
 	number=$(printf %06d $(($i-$start+1)))
-	pts="Pts = $(sed -n $(($i*2-1))p data)"
-	type="Frame = $(sed -n $(($i*2))p data)"
-	ffmpeg -i frame_extractor_frames/frame$number.jpg -vf drawtext="text='$pts  $type':fontcolor=black:fontsize=40" $output/frame$number.jpg 2>&1
+	pts1="$(sed -n $(($i*3-2))p frame_extractor_data)"
+	pts2="$(sed -n $(($i*3-1))p frame_extractor_data)"
+	type="Frame = $(sed -n $(($i*3))p frame_extractor_data)"
+	
+	ffmpeg -i frame_extractor_frames/frame$number.jpg -vf drawtext="text='$pts1, $pts2, $type':fontcolor=red:y=50:fontsize=30" $output/frame$number.jpg 2>&1
+	if [ $? -ne 0 ]
+	then
+		break
+	fi
 done
 rm -rf frame_extractor_frames
 rm frame_extractor_data
